@@ -13,7 +13,7 @@ Cooperative-Competitive Environments](https://arxiv.org/pdf/1706.02275.pdf).
 
 ### Learning Algorithm
 
-The goal is to train 2 agents with each a separate actor but a shared critic and experience buffer. The shared critic 
+The goal is to train 2 agents with **separate actors** but a **shared critic** from a **shared experience buffer**. The shared critic 
 and experience replay buffer aims at stabilizing the training of both agents.
 During training, both agents use their separate actor network to predict the best action to take based on 
 their respective state. Some decaying noise is used in order to favour exploration early in the training, and then
