@@ -49,36 +49,27 @@ def main():
             scores_agents = np.zeros(num_agents)
             env_info = env.reset(train_mode=True)[brain_name]
             states = env_info.vector_observations
-            # print('states from env: {}'.format(states))
             while True:
                 # agent chooses actions
                 states_converted_to_tensor = convert_to_tensor(states)
-                # print('states converted to tensor: {}'.format(states_converted_to_tensor))
                 actions = agent.act(states_converted_to_tensor, noise=noise)
-                # print('actions from agent: {}'.format(actions))
                 noise *= noise_reduction
                 actions_array = torch.stack(actions).detach().numpy()
-                # print('actions array: {}'.format(actions_array))
 
                 # environment takes action and returns new states and rewards
                 env_info = env.step(actions_array)[brain_name]
                 next_states = env_info.vector_observations
-                # print('next states from env: {}'.format(next_states))
                 rewards = env_info.rewards
-                # print('rewards from env: {}'.format(rewards))
                 dones = env_info.local_done
-                # print('dones from env: {}'.format(dones))
 
                 # store in shared replay buffer
                 experience = (states, actions_array, rewards, next_states, dones)
-                # print('experience: {}'.format(experience))
                 buffer.push(experience)
 
                 # update agent with experience sample
                 if len(buffer) > batchsize:
                     for a_i in range(2):
                         samples = buffer.sample(batchsize)
-                        # print('samples: {}'.format(samples))
                         agent.update(samples, a_i)
                     agent.update_targets()  # soft update the target network towards the actual networks
 

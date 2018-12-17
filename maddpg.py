@@ -50,13 +50,6 @@ class MADDPG:
         actions = [agent.act(obs, noise) for agent, obs in zip(self.maddpg_agent, obs_all_agents)]
         return actions
 
-    """"
-    def target_act(self, obs_all_agents, noise=0.0):
-        # get target network actions from all the agents in the MADDPG object 
-        target_actions = [ddpg_agent.target_act(obs, noise) for ddpg_agent, obs in zip(self.maddpg_agent, obs_all_agents)]
-        return target_actions
-    """
-
     def target_act(self, obs_all_agents_list, noise=0.0):
         """get target network actions from all the agents in the MADDPG object """
         target_actions_list = []
@@ -94,57 +87,35 @@ class MADDPG:
         """update the critics and actors of all the agents """
 
         obs_full, actions, rewards, next_obs_full, dones = self.convert_samples_to_tensor(samples)
-        # print('next_obs_full: {}'.format(next_obs_full))
 
         obs_full_s = torch.stack(obs_full)
-        # print('obs_full stacked shape: {}'.format(obs_full_s.shape))
         next_obs_full_s = torch.stack(next_obs_full)
-        # print('next_obs_full stacked: {}'.format(next_obs_full_s))
-        # print('next_obs_full stacked shape: {}'.format(next_obs_full_s.shape))
 
         obs_full_c = torch.reshape(obs_full_s, (len(samples), -1))
-        # print('obs_full concatenated shape: {}'.format(obs_full_c.shape))
-        # next_obs_full_c = torch.cat(next_obs_full)
         next_obs_full_c = torch.reshape(next_obs_full_s, (len(samples), -1))
-        # print('next_obs_full concatenated: {}'.format(next_obs_full_c))
-        # print('next_obs_full concatenated shape: {}'.format(next_obs_full_c.shape))
 
         agent = self.maddpg_agent[agent_number]
         self.critic_optimizer.zero_grad()
 
         #critic loss = batch mean of (y- Q(s,a) from target network)^2
         #y = reward of this timestep + discount * Q(st+1,at+1) from target network
-        #target_actions = self.target_act(next_obs)
         target_actions = self.target_act(next_obs_full_s)
         target_actions_s = torch.stack(target_actions)
-        # print('target_actions stacked shape: {}'.format(target_actions_s.shape))
         target_actions_c = torch.reshape(target_actions_s, (len(samples), -1))
-        # print('target_actions concatenated shape: {}'.format(target_actions_c.shape))
 
         target_critic_input = torch.cat((next_obs_full_c,target_actions_c), dim=1).to(device)
-        # print('target_critic_input shape: {}'.format(target_critic_input.shape))
 
         with torch.no_grad():
             q_next = self.target_critic(target_critic_input)
-            # print('q_next shape: {}'.format(q_next.shape))
 
         rewards_s = torch.stack(rewards)
-        # print('rewards_s stacked shape: {}'.format(rewards_s.shape))
         dones_s = torch.stack(dones)
-        # print('dones_s stacked shape: {}'.format(dones_s.shape))
         y = rewards_s[:,agent_number].view(-1, 1) + self.discount_factor * q_next * (1 - dones_s[:,agent_number].view(-1, 1))
-        # print('y shape: {}'.format(y.shape))
 
-        # action = torch.cat(action, dim=1)
         actions_s = torch.stack(actions)
-        # print('actions stacked shape: {}'.format(actions_s.shape))
         actions_c = torch.reshape(actions_s, (len(samples), -1))
-        # print('actions concatenated shape: {}'.format(actions_c.shape))
-        # critic_input = torch.cat((obs_full.t(), action), dim=1).to(device)
         critic_input = torch.cat((obs_full_c, actions_c), dim=1).to(device)
-        # print('critic_input shape: {}'.format(critic_input.shape))
         q = self.critic(critic_input)
-        # print('q shape: {}'.format(q.shape))
 
         huber_loss = torch.nn.SmoothL1Loss()
         critic_loss = huber_loss(q, y.detach())
@@ -156,13 +127,9 @@ class MADDPG:
         agent.actor_optimizer.zero_grad()
         q_input = self.act_on_list(obs_full_s, agent_number)
         q_input_s = torch.stack(q_input)
-        # print('q_input stacked shape: {}'.format(q_input_s.shape))
 
-        # q_input = torch.cat(q_input, dim=1)
         q_input_c = torch.reshape(q_input_s, (len(samples), -1))
-        # print('q_input concatenated shape: {}'.format(q_input_c.shape))
         # combine all the actions and observations for input to critic
-        # many of the obs are redundant, and obs[1] contains all useful information already
         q_input2 = torch.cat((obs_full_c, q_input_c), dim=1)
 
         # get the policy gradient
@@ -180,10 +147,3 @@ class MADDPG:
         for ddpg_agent in self.maddpg_agent:
             soft_update(ddpg_agent.target_actor, ddpg_agent.actor, self.tau)
         soft_update(self.target_critic, self.critic, self.tau)
-            
-            
-            
-
-
-
-
